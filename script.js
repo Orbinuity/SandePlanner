@@ -835,7 +835,7 @@ function renderOrbinuitySettings() {
                 await syncToOrbinuityCloud();
                 alert(`Connected to Orbinuity as ${STATE.orbinuityUser.displayName}! Cloud sync enabled.`);
             } else {
-                window.open('https://orbinuity.nl/login', '_blank');
+                window.open('https://orbinuity.nl/account/login', '_blank');
                 alert(t.orbinuityLoginPrompt);
             }
 
