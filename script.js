@@ -814,13 +814,14 @@ async function loadFromOrbinuityCloud() {
         });
 
         if (res.ok) {
-            let data = await res.json();
-            if (typeof data === 'string') {
-                try { data = JSON.parse(data); } catch (e) {}
+            let rawData = await res.json();
+            if (typeof rawData === 'string') {
+                try { rawData = JSON.parse(rawData); } catch (e) {}
             }
 
-            const plannerSettings = data.settings;
-            const plannerEvents = data.customEvents;
+            const data = rawData.data || rawData.value || rawData.payload || rawData;
+            const plannerSettings = data.settings || data.sandePlannerSettings;
+            const plannerEvents = data.customEvents || data.sandePlannerEvents;
 
             if (plannerSettings) STATE.settings = { ...STATE.settings, ...plannerSettings };
             if (Array.isArray(plannerEvents)) STATE.customEvents = plannerEvents;
@@ -931,7 +932,6 @@ function renderOrbinuitySettings() {
             try {
                 await directOrbinuityLogin(u, p);
                 renderOrbinuitySettings();
-                await syncToOrbinuityCloud();
             } catch (err) {
                 if (statusMsg) {
                     statusMsg.textContent = err.message;
