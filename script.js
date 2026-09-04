@@ -769,31 +769,14 @@ async function syncToOrbinuityCloud() {
             lastSynced: Date.now()
         };
 
-        let res = await fetch(`${API_ORBINUITY_BASE}/account/settings`, {
+        const res = await fetch(`${API_ORBINUITY_BASE}/external/sandePlanner`, {
             method: 'PUT',
             headers: {
                 'Content-Type': 'application/json',
                 'Authorization': `Bearer ${STATE.orbinuityToken}`
             },
-            body: JSON.stringify({
-                external: {
-                    sandePlanner: payload
-                }
-            })
+            body: JSON.stringify(payload)
         });
-
-        if (!res.ok) {
-            res = await fetch(`${API_ORBINUITY_BASE}/account/external`, {
-                method: 'PUT',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'Authorization': `Bearer ${STATE.orbinuityToken}`
-                },
-                body: JSON.stringify({
-                    sandePlanner: payload
-                })
-            });
-        }
 
         if (res.ok) {
             if (statusMsg) {
@@ -823,7 +806,7 @@ async function loadFromOrbinuityCloud() {
     try {
         if (statusMsg) statusMsg.textContent = 'Downloading cloud data...';
 
-        const res = await fetch(`${API_ORBINUITY_BASE}/account/me`, {
+        const res = await fetch(`${API_ORBINUITY_BASE}/external/sandePlanner`, {
             method: 'GET',
             headers: {
                 'Authorization': `Bearer ${STATE.orbinuityToken}`
@@ -831,15 +814,13 @@ async function loadFromOrbinuityCloud() {
         });
 
         if (res.ok) {
-            const data = await res.json();
-            let ext = data.external;
-            if (typeof ext === 'string') {
-                try { ext = JSON.parse(ext); } catch (e) {}
+            let data = await res.json();
+            if (typeof data === 'string') {
+                try { data = JSON.parse(data); } catch (e) {}
             }
 
-            const appData = ext?.sandePlanner || ext || {};
-            const plannerSettings = appData.settings || appData.sandePlannerSettings;
-            const plannerEvents = appData.customEvents || appData.sandePlannerEvents;
+            const plannerSettings = data.settings;
+            const plannerEvents = data.customEvents;
 
             if (plannerSettings) STATE.settings = { ...STATE.settings, ...plannerSettings };
             if (Array.isArray(plannerEvents)) STATE.customEvents = plannerEvents;
