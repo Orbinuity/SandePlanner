@@ -1062,6 +1062,30 @@ input:focus, select:focus {
     color: var(--text-muted);
 }
 
+.setting-section-title {
+    display: block;
+    font-size: 0.85rem;
+    font-weight: 600;
+    color: var(--text-muted);
+    margin-bottom: 0.5rem;
+}
+
+.orbinuity-signup-prompt {
+    font-size: 0.8rem;
+    color: var(--text-muted);
+    margin-top: 0.5rem;
+}
+
+.orbinuity-signup-prompt a {
+    color: var(--accent);
+    font-weight: 600;
+    text-decoration: underline;
+}
+
+.orbinuity-signup-prompt a:hover {
+    color: var(--accent-hover);
+}
+
 .divider {
     border: 0;
     height: 1px;
