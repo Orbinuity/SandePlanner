@@ -766,6 +766,7 @@ async function syncToOrbinuityCloud() {
         const payload = {
             settings: STATE.settings,
             customEvents: STATE.customEvents,
+            auth: STATE.auth,
             lastSynced: Date.now()
         };
 
@@ -822,16 +823,24 @@ async function loadFromOrbinuityCloud() {
             const data = rawData.data || rawData.value || rawData.payload || rawData;
             const plannerSettings = data.settings || data.sandePlannerSettings;
             const plannerEvents = data.customEvents || data.sandePlannerEvents;
+            const plannerAuth = data.auth || data.sandePlannerAuth;
 
             if (plannerSettings) STATE.settings = { ...STATE.settings, ...plannerSettings };
             if (Array.isArray(plannerEvents)) STATE.customEvents = plannerEvents;
+            if (plannerAuth) {
+                STATE.auth = plannerAuth;
+                localStorage.setItem('zermelo_auth', JSON.stringify(STATE.auth));
+            }
 
             updateAndChainSlots();
             saveSettings(false);
             saveCustomEvents(false);
 
+            renderZermeloSettings();
             renderSchoolHoursPerDaySettings();
             renderScheduleSlotsManager();
+            applyLanguage();
+            fetchSubjectDefinitions();
             fetchSchedule();
 
             if (statusMsg) {
@@ -1077,12 +1086,14 @@ function setupEventListeners() {
                     const imported = JSON.parse(evt.target.result);
                     if (imported.settings) STATE.settings = { ...STATE.settings, ...imported.settings };
                     if (imported.customEvents) STATE.customEvents = imported.customEvents;
-                    if (imported.auth) STATE.auth = imported.auth;
+                    if (imported.auth) {
+                        STATE.auth = imported.auth;
+                        localStorage.setItem('zermelo_auth', JSON.stringify(STATE.auth));
+                    }
 
                     updateAndChainSlots();
                     saveSettings();
                     saveCustomEvents();
-                    localStorage.setItem('zermelo_auth', JSON.stringify(STATE.auth));
 
                     location.reload();
                 } catch (err) {
