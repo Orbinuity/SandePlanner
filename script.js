@@ -763,20 +763,37 @@ async function syncToOrbinuityCloud() {
     try {
         if (statusMsg) statusMsg.textContent = 'Uploading to cloud...';
 
-        const res = await fetch(`${API_ORBINUITY_BASE}/account/settings`, {
+        const payload = {
+            settings: STATE.settings,
+            customEvents: STATE.customEvents,
+            lastSynced: Date.now()
+        };
+
+        let res = await fetch(`${API_ORBINUITY_BASE}/account/settings`, {
             method: 'PUT',
             headers: {
                 'Content-Type': 'application/json',
                 'Authorization': `Bearer ${STATE.orbinuityToken}`
             },
             body: JSON.stringify({
-                settings: {
-                    sandePlannerSettings: STATE.settings,
-                    sandePlannerEvents: STATE.customEvents,
-                    lastSynced: Date.now()
+                external: {
+                    sandePlanner: payload
                 }
             })
         });
+
+        if (!res.ok) {
+            res = await fetch(`${API_ORBINUITY_BASE}/account/external`, {
+                method: 'PUT',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${STATE.orbinuityToken}`
+                },
+                body: JSON.stringify({
+                    sandePlanner: payload
+                })
+            });
+        }
 
         if (res.ok) {
             if (statusMsg) {
@@ -785,7 +802,7 @@ async function syncToOrbinuityCloud() {
                 statusMsg.style.color = 'var(--text-muted)';
             }
         } else {
-            const errData = await res.json();
+            const errData = await res.json().catch(() => ({}));
             if (statusMsg) {
                 statusMsg.textContent = errData.error || 'Cloud upload failed';
                 statusMsg.style.color = 'var(--danger)';
@@ -815,17 +832,36 @@ async function loadFromOrbinuityCloud() {
 
         if (res.ok) {
             const data = await res.json();
-            const plannerSettings = data.settings?.sandePlannerSettings;
-            const plannerEvents = data.settings?.sandePlannerEvents;
+            let ext = data.external;
+            if (typeof ext === 'string') {
+                try { ext = JSON.parse(ext); } catch (e) {}
+            }
+
+            const appData = ext?.sandePlanner || ext || {};
+            const plannerSettings = appData.settings || appData.sandePlannerSettings;
+            const plannerEvents = appData.customEvents || appData.sandePlannerEvents;
 
             if (plannerSettings) STATE.settings = { ...STATE.settings, ...plannerSettings };
-            if (plannerEvents) STATE.customEvents = plannerEvents;
+            if (Array.isArray(plannerEvents)) STATE.customEvents = plannerEvents;
 
             updateAndChainSlots();
             saveSettings(false);
             saveCustomEvents(false);
 
-            location.reload();
+            renderSchoolHoursPerDaySettings();
+            renderScheduleSlotsManager();
+            fetchSchedule();
+
+            if (statusMsg) {
+                const timeStr = new Date().toLocaleTimeString();
+                statusMsg.textContent = `Downloaded cloud data at ${timeStr}`;
+                statusMsg.style.color = 'var(--text-muted)';
+            }
+        } else {
+            if (statusMsg) {
+                statusMsg.textContent = 'Failed to download cloud data';
+                statusMsg.style.color = 'var(--danger)';
+            }
         }
     } catch (e) {
         if (statusMsg) {
