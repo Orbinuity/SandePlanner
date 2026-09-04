@@ -391,13 +391,18 @@ const TRANSLATIONS = {
         disconnectBtn: "Disconnect Zermelo",
         disconnectedStatus: "Not connected to Zermelo",
         orbinuityAccountTitle: "Orbinuity Cloud Sync",
-        connectOrbinuityBtn: "Connect Orbinuity Account",
+        connectOrbinuityBtn: "Login & Connect Orbinuity",
         disconnectOrbinuityBtn: "Disconnect Orbinuity",
         orbinuityNotConnected: "Not connected to Orbinuity account",
         orbinuityConnectedAs: "Synced as",
+        orbinuityNoAccountPrompt: "Don't have an account yet?",
+        orbinuitySignupLinkText: "Create one at Orbinuity",
+        orbUsernameLabel: "Orbinuity Username",
+        orbPasswordLabel: "Orbinuity Password",
+        orbUsernamePlaceholder: "Username",
+        orbPasswordPlaceholder: "Password",
         syncNowBtn: "Sync Cloud Data",
         syncingText: "Syncing...",
-        orbinuityLoginPrompt: "Opening Orbinuity login page... Please log in in the new tab and then click Connect again.",
         daysShort: { 1: 'Mo', 2: 'Tu', 3: 'We', 4: 'Th', 5: 'Fr', 6: 'Sa', 0: 'Su' }
     },
     nl: {
@@ -493,13 +498,18 @@ const TRANSLATIONS = {
         disconnectBtn: "Ontkoppelen van Zermelo",
         disconnectedStatus: "Niet verbonden met Zermelo",
         orbinuityAccountTitle: "Orbinuity Cloud-sync",
-        connectOrbinuityBtn: "Verbinden met Orbinuity",
+        connectOrbinuityBtn: "Inloggen & Verbinden met Orbinuity",
         disconnectOrbinuityBtn: "Ontkoppelen van Orbinuity",
         orbinuityNotConnected: "Niet verbonden met een Orbinuity-account",
         orbinuityConnectedAs: "Gesynchroniseerd als",
+        orbinuityNoAccountPrompt: "Nog geen account?",
+        orbinuitySignupLinkText: "Maak er een aan op Orbinuity",
+        orbUsernameLabel: "Orbinuity Gebruikersnaam",
+        orbPasswordLabel: "Orbinuity Wachtwoord",
+        orbUsernamePlaceholder: "Gebruikersnaam",
+        orbPasswordPlaceholder: "Wachtwoord",
         syncNowBtn: "Cloudgegevens Synchroniseren",
         syncingText: "Synchroniseren...",
-        orbinuityLoginPrompt: "Orbinuity inlogpagina wordt geopend... Log in op het nieuwe tabblad en klik daarna opnieuw op Verbinden.",
         daysShort: { 1: 'Ma', 2: 'Di', 3: 'Wo', 4: 'Do', 5: 'Vr', 6: 'Za', 0: 'Zo' }
     }
 };
@@ -511,6 +521,7 @@ const STATE = {
         token: ''
     },
     orbinuityUser: null,
+    orbinuityToken: null,
     editingCustomEventId: null,
     settings: {
         rangeView: '7days',
@@ -539,14 +550,7 @@ const STATE = {
     draggedSlotIndex: null
 };
 
-let orbinuitySDK = null;
-try {
-    if (typeof OrbinuitySDK !== 'undefined') {
-        orbinuitySDK = new OrbinuitySDK('sandePlanner');
-    }
-} catch (e) {
-    console.warn('Orbinuity SDK not loaded.', e);
-}
+const API_ORBINUITY_BASE = 'https://api.orbinuity.nl:34430/api';
 
 const htmlElement = document.documentElement;
 const themeToggleBtn = document.getElementById('themeToggle');
@@ -611,7 +615,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     initTheme();
     loadStoredData();
     applyLanguage();
-    await checkOrbinuityAccount();
+    await checkOrbinuityDirectApi();
     renderOrbinuitySettings();
     renderZermeloSettings();
     renderSchoolHoursPerDaySettings();
@@ -645,6 +649,20 @@ function loadStoredData() {
     const storedEvents = localStorage.getItem('zermelo_custom_events');
     if (storedEvents) {
         STATE.customEvents = JSON.parse(storedEvents);
+    }
+
+    const storedToken = localStorage.getItem('orbinuity_token');
+    if (storedToken) {
+        STATE.orbinuityToken = storedToken;
+    }
+
+    const storedOrbinuityUser = localStorage.getItem('orbinuity_user_cache');
+    if (storedOrbinuityUser) {
+        try {
+            STATE.orbinuityUser = JSON.parse(storedOrbinuityUser);
+        } catch (e) {
+            STATE.orbinuityUser = null;
+        }
     }
 
     if (settingLanguage) settingLanguage.value = STATE.settings.language;
@@ -690,49 +708,126 @@ function applyLanguage() {
     }
 }
 
-async function checkOrbinuityAccount() {
-    if (!orbinuitySDK) return;
+async function checkOrbinuityDirectApi() {
+    if (!STATE.orbinuityToken) return;
     try {
-        const user = await orbinuitySDK.getUserInfo();
-        if (user) {
-            STATE.orbinuityUser = user;
+        const res = await fetch(`${API_ORBINUITY_BASE}/account/me`, {
+            method: 'GET',
+            headers: {
+                'Authorization': `Bearer ${STATE.orbinuityToken}`
+            }
+        });
+        if (res.ok) {
+            const data = await res.json();
+            STATE.orbinuityUser = data;
+            localStorage.setItem('orbinuity_user_cache', JSON.stringify(data));
+        } else {
+            STATE.orbinuityUser = null;
+            STATE.orbinuityToken = null;
+            localStorage.removeItem('orbinuity_token');
+            localStorage.removeItem('orbinuity_user_cache');
         }
     } catch (e) {
-        STATE.orbinuityUser = null;
+        console.warn(e);
     }
 }
 
+async function directOrbinuityLogin(username, password) {
+    const res = await fetch(`${API_ORBINUITY_BASE}/auth/login`, {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({ username, password })
+    });
+
+    const data = await res.json();
+    if (!res.ok) {
+        throw new Error(data.error || 'Login failed');
+    }
+
+    STATE.orbinuityToken = data.token;
+    localStorage.setItem('orbinuity_token', data.token);
+
+    await checkOrbinuityDirectApi();
+}
+
 async function syncToOrbinuityCloud() {
-    if (!orbinuitySDK || !STATE.orbinuityUser) return;
+    if (!STATE.orbinuityToken) return;
+    const statusMsg = document.getElementById('orbinuityStatusMsg');
+
     try {
-        const payload = {
-            settings: STATE.settings,
-            customEvents: STATE.customEvents,
-            lastSynced: Date.now()
-        };
-        await orbinuitySDK.save(payload);
+        if (statusMsg) statusMsg.textContent = 'Syncing...';
+
+        const res = await fetch(`${API_ORBINUITY_BASE}/account/settings`, {
+            method: 'PUT',
+            headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${STATE.orbinuityToken}`
+            },
+            body: JSON.stringify({
+                settings: {
+                    sandePlannerSettings: STATE.settings,
+                    sandePlannerEvents: STATE.customEvents,
+                    lastSynced: Date.now()
+                }
+            })
+        });
+
+        if (res.ok) {
+            if (statusMsg) {
+                const timeStr = new Date().toLocaleTimeString();
+                statusMsg.textContent = `Last synced at ${timeStr}`;
+                statusMsg.style.color = 'var(--text-muted)';
+            }
+        } else {
+            const errData = await res.json();
+            if (statusMsg) {
+                statusMsg.textContent = errData.error || 'Cloud sync failed';
+                statusMsg.style.color = 'var(--danger)';
+            }
+        }
     } catch (e) {
-        console.warn('Could not auto-save data to Orbinuity Cloud', e);
+        if (statusMsg) {
+            statusMsg.textContent = 'Cloud sync error';
+            statusMsg.style.color = 'var(--danger)';
+        }
     }
 }
 
 async function loadFromOrbinuityCloud() {
-    if (!orbinuitySDK || !STATE.orbinuityUser) return;
+    if (!STATE.orbinuityToken) return;
+    const statusMsg = document.getElementById('orbinuityStatusMsg');
+
     try {
-        const cloudData = await orbinuitySDK.get();
-        if (cloudData) {
-            if (cloudData.settings) STATE.settings = { ...STATE.settings, ...cloudData.settings };
-            if (cloudData.customEvents) STATE.customEvents = cloudData.customEvents;
+        if (statusMsg) statusMsg.textContent = 'Loading cloud data...';
+
+        const res = await fetch(`${API_ORBINUITY_BASE}/account/me`, {
+            method: 'GET',
+            headers: {
+                'Authorization': `Bearer ${STATE.orbinuityToken}`
+            }
+        });
+
+        if (res.ok) {
+            const data = await res.json();
+            const plannerSettings = data.settings?.sandePlannerSettings;
+            const plannerEvents = data.settings?.sandePlannerEvents;
+
+            if (plannerSettings) STATE.settings = { ...STATE.settings, ...plannerSettings };
+            if (plannerEvents) STATE.customEvents = plannerEvents;
 
             updateAndChainSlots();
             saveSettings(false);
             saveCustomEvents(false);
 
-            alert('Cloud data loaded successfully from Orbinuity account!');
             location.reload();
         }
     } catch (e) {
-        alert('Failed to load data from Orbinuity account.');
+        if (statusMsg) {
+            statusMsg.textContent = 'Failed to load cloud data';
+            statusMsg.style.color = 'var(--danger)';
+        }
     }
 }
 
@@ -742,59 +837,79 @@ function renderOrbinuitySettings() {
 
     const lang = STATE.settings.language;
     const t = TRANSLATIONS[lang] || TRANSLATIONS.en;
-    const isConnected = !!STATE.orbinuityUser;
+    const isConnected = !!(STATE.orbinuityToken && STATE.orbinuityUser);
 
     if (isConnected) {
         const displayName = STATE.orbinuityUser.displayName || STATE.orbinuityUser.username || 'User';
         container.innerHTML = `
             <div class="orbinuity-card">
                 <div class="orbinuity-status-row">
-                    <span class="orbinuity-status-text">☁️ ${t.orbinuityConnectedAs} <strong>${displayName}</strong></span>
+                    <span class="orbinuity-status-text">${t.orbinuityConnectedAs} <strong>${displayName}</strong></span>
                     <button id="disconnectOrbinuityBtn" class="btn-danger" style="font-size:0.78rem; padding: 0.35rem 0.75rem;">${t.disconnectOrbinuityBtn}</button>
                 </div>
+                <p id="orbinuityStatusMsg" style="font-size:0.78rem; color:var(--text-muted); margin-top:0.2rem;"></p>
                 <button id="syncOrbinuityNowBtn" class="btn-secondary" style="font-size:0.8rem; padding:0.45rem;">${t.syncNowBtn}</button>
             </div>
         `;
 
         document.getElementById('disconnectOrbinuityBtn').addEventListener('click', () => {
             STATE.orbinuityUser = null;
+            STATE.orbinuityToken = null;
+            localStorage.removeItem('orbinuity_token');
+            localStorage.removeItem('orbinuity_user_cache');
             renderOrbinuitySettings();
         });
 
         document.getElementById('syncOrbinuityNowBtn').addEventListener('click', async () => {
             const btn = document.getElementById('syncOrbinuityNowBtn');
             btn.disabled = true;
-            btn.textContent = t.syncingText;
             await loadFromOrbinuityCloud();
             btn.disabled = false;
-            btn.textContent = t.syncNowBtn;
         });
     } else {
         container.innerHTML = `
             <div class="orbinuity-card">
-                <p style="font-size:0.8rem; color:var(--text-muted);">${t.orbinuityNotConnected}</p>
-                <button id="connectOrbinuityBtn" class="btn-primary" style="font-size:0.85rem; padding:0.5rem;">${t.connectOrbinuityBtn}</button>
+                <p id="orbinuityStatusMsg" style="font-size:0.8rem; color:var(--text-muted);">${t.orbinuityNotConnected}</p>
+                <div class="form-group" style="margin-bottom:0.4rem;">
+                    <label for="orbDirectUser" data-i18n="orbUsernameLabel">${t.orbUsernameLabel}</label>
+                    <input type="text" id="orbDirectUser" placeholder="${t.orbUsernamePlaceholder}" style="font-size:0.82rem; padding:0.45rem 0.6rem;">
+                </div>
+                <div class="form-group" style="margin-bottom:0.5rem;">
+                    <label for="orbDirectPass" data-i18n="orbPasswordLabel">${t.orbPasswordLabel}</label>
+                    <input type="password" id="orbDirectPass" placeholder="${t.orbPasswordPlaceholder}" style="font-size:0.82rem; padding:0.45rem 0.6rem;">
+                </div>
+                <button id="orbDirectLoginBtn" class="btn-primary" style="font-size:0.85rem; padding:0.5rem;">${t.signIn}</button>
+                <p class="orbinuity-signup-prompt">
+                    <span data-i18n="orbinuityNoAccountPrompt">${t.orbinuityNoAccountPrompt}</span>
+                    <a href="https://orbinuity.nl/account/signup" target="_blank" rel="noopener" data-i18n="orbinuitySignupLinkText">${t.orbinuitySignupLinkText}</a>
+                </p>
             </div>
         `;
 
-        document.getElementById('connectOrbinuityBtn').addEventListener('click', async () => {
-            const btn = document.getElementById('connectOrbinuityBtn');
+        document.getElementById('orbDirectLoginBtn').addEventListener('click', async () => {
+            const btn = document.getElementById('orbDirectLoginBtn');
+            const statusMsg = document.getElementById('orbinuityStatusMsg');
+            const u = document.getElementById('orbDirectUser').value.trim();
+            const p = document.getElementById('orbDirectPass').value;
+
+            if (!u || !p) return;
+
             btn.disabled = true;
             btn.textContent = t.authenticating;
 
-            await checkOrbinuityAccount();
-
-            if (STATE.orbinuityUser) {
+            try {
+                await directOrbinuityLogin(u, p);
                 renderOrbinuitySettings();
                 await syncToOrbinuityCloud();
-                alert(`Connected to Orbinuity as ${STATE.orbinuityUser.displayName}! Cloud sync enabled.`);
-            } else {
-                window.open('https://orbinuity.nl/account/login', '_blank');
-                alert(t.orbinuityLoginPrompt);
+            } catch (err) {
+                if (statusMsg) {
+                    statusMsg.textContent = err.message;
+                    statusMsg.style.color = 'var(--danger)';
+                }
+            } finally {
+                btn.disabled = false;
+                btn.textContent = t.signIn;
             }
-
-            btn.disabled = false;
-            btn.textContent = t.connectOrbinuityBtn;
         });
     }
 }
@@ -811,7 +926,7 @@ function renderZermeloSettings() {
         container.innerHTML = `
             <div class="zermelo-card">
                 <div class="zermelo-status-row">
-                    <span class="zermelo-status-text">✓ ${t.connectedTo} <strong>${STATE.auth.school}</strong></span>
+                    <span class="zermelo-status-text">${t.connectedTo} <strong>${STATE.auth.school}</strong></span>
                     <button id="disconnectZermeloBtn" class="btn-danger" style="font-size:0.78rem; padding: 0.35rem 0.75rem;">${t.disconnectBtn || 'Disconnect'}</button>
                 </div>
             </div>
@@ -830,9 +945,11 @@ function renderZermeloSettings() {
             <div class="zermelo-card">
                 <p style="font-size:0.8rem; color:var(--text-muted);">${t.disconnectedStatus}</p>
                 <div class="form-group" style="margin-bottom:0.5rem;">
+                    <label for="zermeloSchoolInput" data-i18n="schoolLabel">${t.schoolLabel}</label>
                     <input type="text" id="zermeloSchoolInput" placeholder="School Identifier (e.g. liemerscollege)" style="font-size:0.85rem; padding:0.5rem 0.75rem;">
                 </div>
                 <div class="form-group" style="margin-bottom:0.5rem;">
+                    <label for="zermeloCodeInput" data-i18n="codeLabel">${t.codeLabel}</label>
                     <input type="text" id="zermeloCodeInput" placeholder="12-Digit Linking Code" maxlength="14" style="font-size:0.85rem; padding:0.5rem 0.75rem;">
                 </div>
                 <button id="connectZermeloBtn" class="btn-primary" style="font-size:0.85rem; padding:0.5rem;">${t.connectBtn || 'Connect Zermelo'}</button>
@@ -844,7 +961,6 @@ function renderZermeloSettings() {
             const rawCode = document.getElementById('zermeloCodeInput').value.replace(/\s+/g, '');
 
             if (!school || !rawCode) {
-                alert('Please enter both your school name and 12-digit code.');
                 return;
             }
 
@@ -862,7 +978,7 @@ function renderZermeloSettings() {
                 fetchSubjectDefinitions();
                 fetchSchedule();
             } catch (err) {
-                alert(`${t.authError} (${err.message})`);
+                console.warn(err);
             } finally {
                 connectBtn.disabled = false;
                 connectBtn.textContent = t.connectBtn || 'Connect Zermelo';
@@ -937,17 +1053,15 @@ function setupEventListeners() {
                     saveCustomEvents();
                     localStorage.setItem('zermelo_auth', JSON.stringify(STATE.auth));
 
-                    alert('Data restored successfully!');
                     location.reload();
                 } catch (err) {
-                    alert('Invalid backup JSON file.');
+                    console.warn('Invalid JSON import file.');
                 }
             };
             reader.readAsText(file);
         });
     }
 
-    
     if (resetSettingsBtn) {
         resetSettingsBtn.addEventListener('click', () => {
             const lang = STATE.settings.language;
@@ -992,7 +1106,6 @@ function setupEventListeners() {
         });
     }
 
-    
     if (resetCustomEventsBtn) {
         resetCustomEventsBtn.addEventListener('click', () => {
             const lang = STATE.settings.language;
@@ -1048,7 +1161,6 @@ function setupEventListeners() {
     if (customEventForm) {
         customEventForm.addEventListener('submit', (e) => {
             e.preventDefault();
-            const t = TRANSLATIONS[STATE.settings.language] || TRANSLATIONS.en;
 
             const eventType = document.getElementById('eventTypeInput').value;
             const title = document.getElementById('eventTitleInput').value.trim();
@@ -1066,7 +1178,6 @@ function setupEventListeners() {
             const endMin = timeToMinutes(endTimeStr);
 
             if (startMin >= endMin) {
-                alert(t.invalidTimeError || "Start time must be before end time.");
                 return;
             }
 
@@ -1076,7 +1187,6 @@ function setupEventListeners() {
             const isNoSchool = !!(STATE.settings.dayOverrides[dateStr]?.isNoSchool);
 
             if (isNoSchool) {
-                alert(t.noSchoolEventError || "Cannot schedule an event on a 'No School' day.");
                 return;
             }
 
@@ -1084,12 +1194,6 @@ function setupEventListeners() {
             const dayEndMin = timeToMinutes(dayConfig.end || '17:00');
 
             if (startMin < dayStartMin || endMin > dayEndMin) {
-                const startFmt = formatTimeString(dayConfig.start || '08:00', STATE.settings.language === 'nl' ? 'nl-NL' : 'en-US', STATE.settings.timeFormat === '12h');
-                const endFmt = formatTimeString(dayConfig.end || '17:00', STATE.settings.language === 'nl' ? 'nl-NL' : 'en-US', STATE.settings.timeFormat === '12h');
-                const errMsg = (t.outOfBoundsError || "Event is out of bounds! The school hours for this day are {start} – {end}.")
-                    .replace('{start}', startFmt)
-                    .replace('{end}', endFmt);
-                alert(errMsg);
                 return;
             }
 
@@ -1782,8 +1886,8 @@ function createAppointmentElement(app, overlapMap, t, locale, use12Hour, topPx, 
             <span class="${isCancelled ? 'title-cancelled' : ''}">${displayTitle}</span>
             <div style="display:flex; gap:0.2rem; align-items:center;">
                 ${isCancelled ? `<span class="cancelled-tag">${t.cancelledTag || 'Cancelled'}</span>` : ''}
-                ${hasOverlap ? `<span class="overlap-warning-tag">⚠️ Overlap</span>` : ''}
-                ${hasRemark ? `<span class="remark-tag" title="${remarkText}">💬 ${remarkText}</span>` : ''}
+                ${hasOverlap ? `<span class="overlap-warning-tag">Overlap</span>` : ''}
+                ${hasRemark ? `<span class="remark-tag" title="${remarkText}">${remarkText}</span>` : ''}
             </div>
         </div>
         <div class="app-time">${startTimeStr} – ${endTimeStr}</div>
@@ -1869,7 +1973,7 @@ function renderSingleDayBlock(dayData, appointments, locale, dateFormat, timeFor
                 <button class="day-edit-btn" data-date="${dateKey}" title="Customize hours for ${dayName}">
                     <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                         <circle cx="12" cy="12" r="10"></circle>
-                        <polyline points="12 6 12 12 16 14"></polyline>
+                        <polyline points="12 6 12 16 14"></polyline>
                     </svg>
                 </button>
             </div>
@@ -1970,7 +2074,7 @@ function renderSingleDayBlock(dayData, appointments, locale, dateFormat, timeFor
     });
 
     dayCol.querySelector('.day-pdf-btn').addEventListener('click', () => {
-        setPrintOrientation(false); 
+        setPrintOrientation(false);
         document.body.classList.remove('printing-week');
         document.body.classList.add('printing-single-day');
 
@@ -1999,7 +2103,6 @@ function renderSingleDayBlock(dayData, appointments, locale, dateFormat, timeFor
     return calWrapper;
 }
 
-
 function renderStackedWeeksCalendar(appointments, startDate, fetchTotalDays) {
     if (!scheduleContainer) return;
     scheduleContainer.innerHTML = '';
@@ -2012,7 +2115,6 @@ function renderStackedWeeksCalendar(appointments, startDate, fetchTotalDays) {
     const now = new Date();
     const todayKey = getLocalDateKey(now);
 
-    
     if (rangeView === '7days') {
         const weekBlock = document.createElement('div');
         weekBlock.className = 'week-block';
@@ -2062,7 +2164,6 @@ function renderStackedWeeksCalendar(appointments, startDate, fetchTotalDays) {
         return;
     }
 
-    
     const weeksList = [];
     let currentWeekDays = [];
 
@@ -2106,7 +2207,7 @@ function renderStackedWeeksCalendar(appointments, startDate, fetchTotalDays) {
         weekBlock.appendChild(weekHeaderRow);
 
         weekHeaderRow.querySelector('.week-pdf-btn').addEventListener('click', () => {
-            setPrintOrientation(true); 
+            setPrintOrientation(true);
             document.body.classList.remove('printing-single-day');
             document.body.classList.add('printing-week');
 
@@ -2224,7 +2325,7 @@ function renderStackedWeeksCalendar(appointments, startDate, fetchTotalDays) {
                         <button class="day-edit-btn" data-date="${dateKey}" title="Customize hours for ${dayName}">
                             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                                 <circle cx="12" cy="12" r="10"></circle>
-                                <polyline points="12 6 12 12 16 14"></polyline>
+                                <polyline points="12 6 12 16 14"></polyline>
                             </svg>
                         </button>
                     </div>
@@ -2335,7 +2436,7 @@ function renderStackedWeeksCalendar(appointments, startDate, fetchTotalDays) {
             });
 
             dayCol.querySelector('.day-pdf-btn').addEventListener('click', () => {
-                setPrintOrientation(false); 
+                setPrintOrientation(false);
                 document.body.classList.remove('printing-week');
                 document.body.classList.add('printing-single-day');
 
@@ -2343,7 +2444,7 @@ function renderStackedWeeksCalendar(appointments, startDate, fetchTotalDays) {
                 document.querySelectorAll('.calendar-wrapper').forEach(cw => cw.classList.remove('has-active-day'));
                 document.querySelectorAll('.day-column').forEach(dc => dc.classList.remove('print-active-day'));
 
-                weekBlock.classList.add('print-active');
+                if (weekBlock) weekBlock.classList.add('print-active');
                 calWrapper.classList.add('has-active-day');
                 dayCol.classList.add('print-active-day');
 
@@ -2366,7 +2467,6 @@ function renderStackedWeeksCalendar(appointments, startDate, fetchTotalDays) {
         scheduleContainer.appendChild(weekBlock);
     });
 }
-
 
 function openDayHoursModal(dateKey, dayName, dateFormatted, dayOfWeek) {
     STATE.activeDayOverrideKey = dateKey;
@@ -2392,7 +2492,6 @@ function openDayHoursModal(dateKey, dayName, dateFormatted, dayOfWeek) {
 
     if (dayHoursModal) dayHoursModal.classList.remove('hidden');
 }
-
 
 function openLessonModal(app, overlappingItems) {
     STATE.activeOpenedApp = app;
@@ -2432,7 +2531,6 @@ function openLessonModal(app, overlappingItems) {
     if (modalTeacher) modalTeacher.textContent = app.teachers?.join(', ') || 'N/A';
     if (modalGroup) modalGroup.textContent = app.groups?.join(', ') || 'N/A';
 
-    
     if (overlappingItems && overlappingItems.length > 0) {
         if (lessonModalOverlapText) {
             const uniqueTitles = [...new Set(overlappingItems.map(item => item.title))].join(', ');
@@ -2476,7 +2574,6 @@ function openLessonModal(app, overlappingItems) {
 
     if (lessonModal) lessonModal.classList.remove('hidden');
 }
-
 
 function getWeekNumber(d) {
     const date = new Date(Date.UTC(d.getFullYear(), d.getMonth(), d.getDate()));
