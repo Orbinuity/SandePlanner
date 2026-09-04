@@ -401,6 +401,8 @@ const TRANSLATIONS = {
         orbPasswordLabel: "Orbinuity Password",
         orbUsernamePlaceholder: "Username",
         orbPasswordPlaceholder: "Password",
+        uploadCloudBtn: "Upload to Cloud",
+        downloadCloudBtn: "Download from Cloud",
         syncNowBtn: "Sync Cloud Data",
         syncingText: "Syncing...",
         daysShort: { 1: 'Mo', 2: 'Tu', 3: 'We', 4: 'Th', 5: 'Fr', 6: 'Sa', 0: 'Su' }
@@ -508,6 +510,8 @@ const TRANSLATIONS = {
         orbPasswordLabel: "Orbinuity Wachtwoord",
         orbUsernamePlaceholder: "Gebruikersnaam",
         orbPasswordPlaceholder: "Wachtwoord",
+        uploadCloudBtn: "Uploaden naar Cloud",
+        downloadCloudBtn: "Downloaden uit Cloud",
         syncNowBtn: "Cloudgegevens Synchroniseren",
         syncingText: "Synchroniseren...",
         daysShort: { 1: 'Ma', 2: 'Di', 3: 'Wo', 4: 'Do', 5: 'Vr', 6: 'Za', 0: 'Zo' }
@@ -757,7 +761,7 @@ async function syncToOrbinuityCloud() {
     const statusMsg = document.getElementById('orbinuityStatusMsg');
 
     try {
-        if (statusMsg) statusMsg.textContent = 'Syncing...';
+        if (statusMsg) statusMsg.textContent = 'Uploading to cloud...';
 
         const res = await fetch(`${API_ORBINUITY_BASE}/account/settings`, {
             method: 'PUT',
@@ -777,13 +781,13 @@ async function syncToOrbinuityCloud() {
         if (res.ok) {
             if (statusMsg) {
                 const timeStr = new Date().toLocaleTimeString();
-                statusMsg.textContent = `Last synced at ${timeStr}`;
+                statusMsg.textContent = `Uploaded to cloud at ${timeStr}`;
                 statusMsg.style.color = 'var(--text-muted)';
             }
         } else {
             const errData = await res.json();
             if (statusMsg) {
-                statusMsg.textContent = errData.error || 'Cloud sync failed';
+                statusMsg.textContent = errData.error || 'Cloud upload failed';
                 statusMsg.style.color = 'var(--danger)';
             }
         }
@@ -800,7 +804,7 @@ async function loadFromOrbinuityCloud() {
     const statusMsg = document.getElementById('orbinuityStatusMsg');
 
     try {
-        if (statusMsg) statusMsg.textContent = 'Loading cloud data...';
+        if (statusMsg) statusMsg.textContent = 'Downloading cloud data...';
 
         const res = await fetch(`${API_ORBINUITY_BASE}/account/me`, {
             method: 'GET',
@@ -825,7 +829,7 @@ async function loadFromOrbinuityCloud() {
         }
     } catch (e) {
         if (statusMsg) {
-            statusMsg.textContent = 'Failed to load cloud data';
+            statusMsg.textContent = 'Failed to download cloud data';
             statusMsg.style.color = 'var(--danger)';
         }
     }
@@ -848,7 +852,10 @@ function renderOrbinuitySettings() {
                     <button id="disconnectOrbinuityBtn" class="btn-danger" style="font-size:0.78rem; padding: 0.35rem 0.75rem;">${t.disconnectOrbinuityBtn}</button>
                 </div>
                 <p id="orbinuityStatusMsg" style="font-size:0.78rem; color:var(--text-muted); margin-top:0.2rem;"></p>
-                <button id="syncOrbinuityNowBtn" class="btn-secondary" style="font-size:0.8rem; padding:0.45rem;">${t.syncNowBtn}</button>
+                <div style="display:flex; gap:0.4rem; margin-top:0.4rem;">
+                    <button id="uploadOrbinuityBtn" class="btn-secondary" style="font-size:0.8rem; padding:0.45rem; flex:1;">${t.uploadCloudBtn || 'Upload to Cloud'}</button>
+                    <button id="downloadOrbinuityBtn" class="btn-secondary" style="font-size:0.8rem; padding:0.45rem; flex:1;">${t.downloadCloudBtn || 'Download from Cloud'}</button>
+                </div>
             </div>
         `;
 
@@ -860,8 +867,15 @@ function renderOrbinuitySettings() {
             renderOrbinuitySettings();
         });
 
-        document.getElementById('syncOrbinuityNowBtn').addEventListener('click', async () => {
-            const btn = document.getElementById('syncOrbinuityNowBtn');
+        document.getElementById('uploadOrbinuityBtn').addEventListener('click', async () => {
+            const btn = document.getElementById('uploadOrbinuityBtn');
+            btn.disabled = true;
+            await syncToOrbinuityCloud();
+            btn.disabled = false;
+        });
+
+        document.getElementById('downloadOrbinuityBtn').addEventListener('click', async () => {
+            const btn = document.getElementById('downloadOrbinuityBtn');
             btn.disabled = true;
             await loadFromOrbinuityCloud();
             btn.disabled = false;
