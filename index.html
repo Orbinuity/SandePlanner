@@ -9,7 +9,6 @@
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="styles.css">
-    <script src="https://orbinuity.nl/api/sdk.js"></script>
 </head>
 <body>
 
@@ -249,12 +248,12 @@
             <div class="modal-body">
                 
                 <div class="setting-item">
-                    <label data-i18n="orbinuityAccountTitle">Orbinuity Cloud Sync</label>
+                    <span class="setting-section-title" data-i18n="orbinuityAccountTitle">Orbinuity Cloud Sync</span>
                     <div id="orbinuitySettingsContainer"></div>
                 </div>
 
                 <div class="setting-item">
-                    <label data-i18n="zermeloAccountTitle">Zermelo Account</label>
+                    <span class="setting-section-title" data-i18n="zermeloAccountTitle">Zermelo Account</span>
                     <div id="zermeloSettingsContainer"></div>
                 </div>
 
@@ -307,13 +306,13 @@
                 </div>
 
                 <div class="setting-item">
-                    <label data-i18n="schoolHoursPerDayTitle">School Start & End Times Per Day</label>
+                    <span class="setting-section-title" data-i18n="schoolHoursPerDayTitle">School Start & End Times Per Day</span>
                     <div id="schoolHoursPerDayContainer" class="day-hours-setting-list"></div>
                 </div>
 
                 <div class="setting-item">
                     <div class="section-header-btn">
-                        <label data-i18n="scheduleSlotsTitle" style="margin-bottom:0;">School Hours & Breaks</label>
+                        <span class="setting-section-title" data-i18n="scheduleSlotsTitle" style="margin-bottom:0;">School Hours & Breaks</span>
                         <button id="addSlotBtn" class="btn-secondary" style="padding: 0.25rem 0.6rem; font-size: 0.75rem;" data-i18n="addSlotBtn">+ Add Item</button>
                     </div>
                     <div id="scheduleSlotsContainer" class="breaks-list"></div>
@@ -342,7 +341,7 @@
                 </div>
 
                 <div class="setting-item">
-                    <label data-i18n="backupTitle">Backup & Restore</label>
+                    <span class="setting-section-title" data-i18n="backupTitle">Backup & Restore</span>
                     <div class="backup-btn-grid">
                         <button id="exportDataBtn" class="btn-secondary" data-i18n="exportData">Export Data</button>
                         <button id="importDataBtn" class="btn-secondary" data-i18n="importData">Import Data</button>
