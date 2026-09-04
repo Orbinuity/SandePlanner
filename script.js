@@ -1,4 +1,3 @@
-
 function getLocalDateKey(d) {
     const year = d.getFullYear();
     const month = String(d.getMonth() + 1).padStart(2, '0');
@@ -6,20 +5,17 @@ function getLocalDateKey(d) {
     return `${year}-${month}-${day}`;
 }
 
-
 function timeToMinutes(timeStr) {
     if (!timeStr) return 0;
     const [h, m] = timeStr.split(':').map(Number);
     return h * 60 + m;
 }
 
-
 function minutesToTime(totalMin) {
     const h = Math.floor(totalMin / 60) % 24;
     const m = totalMin % 60;
     return `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}`;
 }
-
 
 function formatTimeString(timeStr, locale, use12Hour) {
     if (!timeStr) return '';
@@ -36,7 +32,6 @@ function formatTimeString(timeStr, locale, use12Hour) {
     }
 }
 
-
 function formatDMMM(dateObj, locale) {
     if (!dateObj) return '';
     const day = dateObj.getDate();
@@ -45,13 +40,11 @@ function formatDMMM(dateObj, locale) {
     return `${day} ${monthShort} ${year}`;
 }
 
-
 function getDayLabel(dayId) {
     const lang = STATE.settings.language;
     const t = TRANSLATIONS[lang] || TRANSLATIONS.en;
     return t.daysShort[dayId] || DAY_KEYS.find(d => d.id === dayId)?.label || '';
 }
-
 
 function setPrintOrientation(isLandscape) {
     let printPageStyle = document.getElementById('printPageStyle');
@@ -62,7 +55,6 @@ function setPrintOrientation(isLandscape) {
     }
     printPageStyle.textContent = `@page { size: A4 ${isLandscape ? 'landscape' : 'portrait'}; margin: 0; }`;
 }
-
 
 function formatDate(dateObj, dateFormat, locale, shortDay = false) {
     if (!dateObj) return '';
@@ -97,11 +89,10 @@ function formatDate(dateObj, dateFormat, locale, shortDay = false) {
         return `${dateObj.getDate()} ${monthLong} ${year}`;
     } else if (dateFormat === 'EEE, D MMM') {
         return `${weekDayShort}, ${dateObj.getDate()} ${monthShort}`;
-    } else { 
+    } else {
         return `${dateObj.getDate()} ${monthShort} ${year}`;
     }
 }
-
 
 function isAppointmentCancelled(app) {
     if (!app) return false;
@@ -128,7 +119,6 @@ function isAppointmentCancelled(app) {
 
     return false;
 }
-
 
 const DEFAULT_SCHEDULE_SLOTS_EN = [
     { id: 'slot_1', type: 'lesson', label: '1st hour', start: '08:10', end: '09:00' },
@@ -162,7 +152,6 @@ function getDefaultSlots(lang) {
     return lang === 'nl' ? DEFAULT_SCHEDULE_SLOTS_NL : DEFAULT_SCHEDULE_SLOTS_EN;
 }
 
-
 function translateDefaultSlots(targetLang) {
     const enSlots = DEFAULT_SCHEDULE_SLOTS_EN;
     const nlSlots = DEFAULT_SCHEDULE_SLOTS_NL;
@@ -185,7 +174,6 @@ function translateDefaultSlots(targetLang) {
     });
 }
 
-
 function updateAndChainSlots() {
     const slots = STATE.settings.scheduleSlots;
     if (!slots || slots.length === 0) return;
@@ -204,49 +192,34 @@ function updateAndChainSlots() {
     }
 }
 
-
 function timeToY(timeMin, minMinutes, hourHeight = 72) {
     const pxPerMin = hourHeight / 60;
     return (timeMin - minMinutes) * pxPerMin;
 }
 
-
 const SUBJECT_DATABASE = {
-    
     'ne': { nl: 'Nederlands', en: 'Dutch' },
     'netl': { nl: 'Nederlands', en: 'Dutch' },
     'nederlands': { nl: 'Nederlands', en: 'Dutch' },
-
-    
     'en': { nl: 'Engels', en: 'English' },
     'entl': { nl: 'Engels', en: 'English' },
     'engels': { nl: 'Engels', en: 'English' },
-
-    
     'du': { nl: 'Duits', en: 'German' },
     'dutl': { nl: 'Duits', en: 'German' },
     'de': { nl: 'Duits', en: 'German' },
     'duits': { nl: 'Duits', en: 'German' },
-
-    
     'fa': { nl: 'Frans', en: 'French' },
     'fatl': { nl: 'Frans', en: 'French' },
     'frans': { nl: 'Frans', en: 'French' },
-
-    
     'sp': { nl: 'Spaans', en: 'Spanish' },
     'sptl': { nl: 'Spaans', en: 'Spanish' },
     'spaans': { nl: 'Spaans', en: 'Spanish' },
-
-    
     'la': { nl: 'Latijn', en: 'Latin' },
     'ltc': { nl: 'Latijn', en: 'Latin' },
     'latijn': { nl: 'Latijn', en: 'Latin' },
     'gr': { nl: 'Grieks', en: 'Greek' },
     'gtc': { nl: 'Grieks', en: 'Greek' },
     'grieks': { nl: 'Grieks', en: 'Greek' },
-
-    
     'wi': { nl: 'Wiskunde', en: 'Math' },
     'wisk': { nl: 'Wiskunde', en: 'Math' },
     'wiskunde': { nl: 'Wiskunde', en: 'Math' },
@@ -258,13 +231,9 @@ const SUBJECT_DATABASE = {
     'wc': { nl: 'Wiskunde C', en: 'Math C' },
     'wid': { nl: 'Wiskunde D', en: 'Math D' },
     'wd': { nl: 'Wiskunde D', en: 'Math D' },
-
-    
     'lo': { nl: 'Lichamelijke Opvoeding', en: 'PE / Gym' },
     'gym': { nl: 'Lichamelijke Opvoeding', en: 'PE / Gym' },
     'pe': { nl: 'Lichamelijke Opvoeding', en: 'PE / Gym' },
-
-    
     'sk': { nl: 'Scheikunde', en: 'Chemistry' },
     'schei': { nl: 'Scheikunde', en: 'Chemistry' },
     'bi': { nl: 'Biologie', en: 'Biology' },
@@ -275,15 +244,11 @@ const SUBJECT_DATABASE = {
     'aard': { nl: 'Aardrijkskunde', en: 'Geography' },
     'gs': { nl: 'Geschiedenis', en: 'History' },
     'ges': { nl: 'Geschiedenis', en: 'History' },
-
-    
     'ec': { nl: 'Economie', en: 'Economics' },
     'econ': { nl: 'Economie', en: 'Economics' },
     'beco': { nl: 'Bedrijfseconomie', en: 'Business Economics' },
     'be': { nl: 'Bedrijfseconomie', en: 'Business Economics' },
     'm&o': { nl: 'Bedrijfseconomie', en: 'Business Economics' },
-
-    
     'mu': { nl: 'Muziek', en: 'Music' },
     'mus': { nl: 'Muziek', en: 'Music' },
     'ha': { nl: 'Handvaardigheid', en: 'Crafts' },
@@ -291,8 +256,6 @@ const SUBJECT_DATABASE = {
     'bv': { nl: 'Beeldende Vorming', en: 'Visual Arts' },
     'ckv': { nl: 'CKV', en: 'Cultural Art' },
     'mvt': { nl: 'Moderne Vreemde Talen', en: 'Foreign Languages' },
-
-    
     'coach': { nl: 'Coaching', en: 'Coaching' },
     'coaching': { nl: 'Coaching', en: 'Coaching' },
     'men': { nl: 'Mentoraat', en: 'Mentoring' },
@@ -300,8 +263,6 @@ const SUBJECT_DATABASE = {
     'slb': { nl: 'Mentoraat', en: 'Mentoring' },
     'inf': { nl: 'Informatica', en: 'Computer Science' },
     'ib': { nl: 'Informatica', en: 'Computer Science' },
-
-    
     'nlt': { nl: 'NLT', en: 'Science & Tech' },
     'anw': { nl: 'ANW', en: 'General Science' },
     'o&o': { nl: 'Onderzoek & Ontwerpen', en: 'Research & Design' },
@@ -309,7 +270,6 @@ const SUBJECT_DATABASE = {
     'maw': { nl: 'Maatschappijleer', en: 'Social Studies' },
     'maat': { nl: 'Maatschappijleer', en: 'Social Studies' }
 };
-
 
 function getSubjectNiceName(code, lang) {
     if (!code) return 'Activity';
@@ -335,7 +295,6 @@ const DAY_KEYS = [
     { id: 6, label: 'Sa' },
     { id: 0, label: 'Su' }
 ];
-
 
 const TRANSLATIONS = {
     en: {
@@ -545,7 +504,6 @@ const TRANSLATIONS = {
     }
 };
 
-
 const STATE = {
     auth: {
         school: '',
@@ -581,7 +539,6 @@ const STATE = {
     draggedSlotIndex: null
 };
 
-
 let orbinuitySDK = null;
 try {
     if (typeof OrbinuitySDK !== 'undefined') {
@@ -590,7 +547,6 @@ try {
 } catch (e) {
     console.warn('Orbinuity SDK not loaded.', e);
 }
-
 
 const htmlElement = document.documentElement;
 const themeToggleBtn = document.getElementById('themeToggle');
@@ -650,7 +606,6 @@ const importFileInput = document.getElementById('importFileInput');
 
 const userContext = document.getElementById('userContext');
 const scheduleContainer = document.getElementById('schedule');
-
 
 document.addEventListener('DOMContentLoaded', async () => {
     initTheme();
@@ -734,7 +689,6 @@ function applyLanguage() {
         }
     }
 }
-
 
 async function checkOrbinuityAccount() {
     if (!orbinuitySDK) return;
@@ -844,7 +798,6 @@ function renderOrbinuitySettings() {
         });
     }
 }
-
 
 function renderZermeloSettings() {
     const container = document.getElementById('zermeloSettingsContainer');
@@ -1112,13 +1065,11 @@ function setupEventListeners() {
             const startMin = timeToMinutes(startTimeStr);
             const endMin = timeToMinutes(endTimeStr);
 
-            
             if (startMin >= endMin) {
                 alert(t.invalidTimeError || "Start time must be before end time.");
                 return;
             }
 
-            
             const dateObj = new Date(`${dateStr}T00:00:00`);
             const dayOfWeek = dateObj.getDay();
             const dayConfig = STATE.settings.dayOverrides[dateStr] || STATE.settings.schoolHoursPerDay[dayOfWeek] || { start: '08:00', end: '17:00' };
@@ -1146,7 +1097,6 @@ function setupEventListeners() {
             const endDate = new Date(`${dateStr}T${endTimeStr}:00`);
 
             if (STATE.editingCustomEventId) {
-                
                 const eventIndex = STATE.customEvents.findIndex(ev => ev.id === STATE.editingCustomEventId);
                 if (eventIndex !== -1) {
                     STATE.customEvents[eventIndex] = {
@@ -1165,7 +1115,6 @@ function setupEventListeners() {
                 }
                 STATE.editingCustomEventId = null;
             } else {
-                
                 const newEvent = {
                     id: 'custom_' + Date.now(),
                     isCustom: true,
@@ -1194,7 +1143,6 @@ function setupEventListeners() {
         editCustomEventBtn.addEventListener('click', () => {
             const app = STATE.activeOpenedApp;
             if (app && app.isCustom) {
-                
                 const masterId = app.parentEventId || app.id;
                 const masterEvent = STATE.customEvents.find(ev => ev.id === masterId) || app;
 
@@ -1412,7 +1360,6 @@ function setupEventListeners() {
     }
 }
 
-
 function renderSchoolHoursPerDaySettings() {
     const container = document.getElementById('schoolHoursPerDayContainer');
     if (!container) return;
@@ -1455,7 +1402,6 @@ function renderSchoolHoursPerDaySettings() {
     });
 }
 
-
 function renderScheduleSlotsManager() {
     const container = document.getElementById('scheduleSlotsContainer');
     if (!container) return;
@@ -1494,7 +1440,6 @@ function renderScheduleSlotsManager() {
             <button class="remove-break-btn" data-idx="${idx}">&times;</button>
         `;
 
-        
         card.addEventListener('dragstart', (e) => {
             STATE.draggedSlotIndex = idx;
             card.classList.add('dragging');
@@ -1616,7 +1561,6 @@ async function exchangeCodeForToken(school, code) {
     return data.access_token;
 }
 
-
 async function fetchSubjectDefinitions() {
     const { school, token } = STATE.auth;
     if (!school || !token) return;
@@ -1657,7 +1601,6 @@ function showDashboard() {
     fetchSubjectDefinitions();
     fetchSchedule();
 }
-
 
 function expandCustomEvents(eventsList, viewStartSec, viewEndSec) {
     const expanded = [];
@@ -1761,7 +1704,6 @@ async function fetchSchedule() {
     renderStackedWeeksCalendar(combinedAppointments, startDate, fetchTotalDays);
 }
 
-
 function detectOverlaps(dayApps, dayOfWeek) {
     const overlapMap = new Map();
     const activeApps = dayApps.filter(app => !isAppointmentCancelled(app));
@@ -1791,7 +1733,6 @@ function detectOverlaps(dayApps, dayOfWeek) {
 
     return overlapMap;
 }
-
 
 function createAppointmentElement(app, overlapMap, t, locale, use12Hour, topPx, heightPx) {
     const appStart = new Date(app.start * 1000);
@@ -1854,7 +1795,6 @@ function createAppointmentElement(app, overlapMap, t, locale, use12Hour, topPx, 
     appDiv.addEventListener('click', () => openLessonModal(app, overlaps));
     return appDiv;
 }
-
 
 function renderSingleDayBlock(dayData, appointments, locale, dateFormat, timeFormat, schoolHoursPerDay, dayOverrides, todayKey, t, weekBlock) {
     const use12Hour = timeFormat === '12h';
