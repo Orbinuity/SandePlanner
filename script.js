@@ -416,7 +416,7 @@ const TRANSLATIONS = {
         weekSchedule: "Rooster Overzicht",
         connectedTo: "Verbonden met",
         offlineMode: "Offlinemodus (Lokaal)",
-        preferences: "Instellingen",
+        preferences: "Preferences",
         language: "Taal",
         timetableRange: "Rooster Weergave Periode",
         view7Days: "Komende 7 Dagen (Gestapeld)",
@@ -704,8 +704,16 @@ function applyLanguage() {
     });
 
     if (userContext) {
-        if (STATE.auth.school && STATE.auth.token) {
+        const zermeloConnected = !!(STATE.auth.school && STATE.auth.token);
+        const orbConnected = !!(STATE.orbinuityUser && STATE.orbinuityToken);
+        const orbName = STATE.orbinuityUser?.displayName || STATE.orbinuityUser?.username;
+
+        if (zermeloConnected && orbConnected) {
+            userContext.textContent = `${t.connectedTo} ${STATE.auth.school} | ${orbName}`;
+        } else if (zermeloConnected) {
             userContext.textContent = `${t.connectedTo} ${STATE.auth.school}`;
+        } else if (orbConnected) {
+            userContext.textContent = `${orbName} (${t.offlineMode || 'Offline Mode'})`;
         } else {
             userContext.textContent = t.offlineMode || 'Offline Mode';
         }
@@ -754,6 +762,7 @@ async function directOrbinuityLogin(username, password) {
     localStorage.setItem('orbinuity_token', data.token);
 
     await checkOrbinuityDirectApi();
+    applyLanguage();
 }
 
 async function syncToOrbinuityCloud() {
@@ -892,6 +901,7 @@ function renderOrbinuitySettings() {
             localStorage.removeItem('orbinuity_token');
             localStorage.removeItem('orbinuity_user_cache');
             renderOrbinuitySettings();
+            applyLanguage();
         });
 
         document.getElementById('uploadOrbinuityBtn').addEventListener('click', async () => {
@@ -1062,7 +1072,9 @@ function setupEventListeners() {
             const dataPayload = {
                 settings: STATE.settings,
                 customEvents: STATE.customEvents,
-                auth: STATE.auth
+                auth: STATE.auth,
+                orbinuityToken: STATE.orbinuityToken,
+                orbinuityUser: STATE.orbinuityUser
             };
             const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(dataPayload, null, 2));
             const downloadAnchor = document.createElement('a');
@@ -1090,10 +1102,18 @@ function setupEventListeners() {
                         STATE.auth = imported.auth;
                         localStorage.setItem('zermelo_auth', JSON.stringify(STATE.auth));
                     }
+                    if (imported.orbinuityToken) {
+                        STATE.orbinuityToken = imported.orbinuityToken;
+                        localStorage.setItem('orbinuity_token', imported.orbinuityToken);
+                    }
+                    if (imported.orbinuityUser) {
+                        STATE.orbinuityUser = imported.orbinuityUser;
+                        localStorage.setItem('orbinuity_user_cache', JSON.stringify(imported.orbinuityUser));
+                    }
 
                     updateAndChainSlots();
-                    saveSettings();
-                    saveCustomEvents();
+                    saveSettings(false);
+                    saveCustomEvents(false);
 
                     location.reload();
                 } catch (err) {
