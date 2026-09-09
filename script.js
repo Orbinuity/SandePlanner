@@ -397,10 +397,13 @@ const TRANSLATIONS = {
         orbinuityConnectedAs: "Synced as",
         orbinuityNoAccountPrompt: "Don't have an account yet?",
         orbinuitySignupLinkText: "Create one at Orbinuity",
-        orbUsernameLabel: "Orbinuity Username",
-        orbPasswordLabel: "Orbinuity Password",
-        orbUsernamePlaceholder: "Username",
+        orbUsernameLabel: "Username or Email",
+        orbPasswordLabel: "Password",
+        orbUsernamePlaceholder: "Username or Email",
         orbPasswordPlaceholder: "Password",
+        orb2faLabel: "Enter 6-Digit Email Code",
+        orb2faPlaceholder: "123456",
+        orbVerifyBtn: "Verify Code",
         uploadCloudBtn: "Upload to Cloud",
         downloadCloudBtn: "Download from Cloud",
         syncNowBtn: "Sync Cloud Data",
@@ -506,10 +509,13 @@ const TRANSLATIONS = {
         orbinuityConnectedAs: "Gesynchroniseerd als",
         orbinuityNoAccountPrompt: "Nog geen account?",
         orbinuitySignupLinkText: "Maak er een aan op Orbinuity",
-        orbUsernameLabel: "Orbinuity Gebruikersnaam",
-        orbPasswordLabel: "Orbinuity Wachtwoord",
-        orbUsernamePlaceholder: "Gebruikersnaam",
+        orbUsernameLabel: "Gebruikersnaam of E-mailadres",
+        orbPasswordLabel: "Wachtwoord",
+        orbUsernamePlaceholder: "Gebruikersnaam of E-mailadres",
         orbPasswordPlaceholder: "Wachtwoord",
+        orb2faLabel: "Voer 6-cijferige e-mailcode in",
+        orb2faPlaceholder: "123456",
+        orbVerifyBtn: "Code Verifiëren",
         uploadCloudBtn: "Uploaden naar Cloud",
         downloadCloudBtn: "Downloaden uit Cloud",
         syncNowBtn: "Cloudgegevens Synchroniseren",
@@ -554,6 +560,7 @@ const STATE = {
     draggedSlotIndex: null
 };
 
+let pendingUserId = null;
 const API_ORBINUITY_BASE = 'https://api.orbinuity.nl:34430/api';
 
 const htmlElement = document.documentElement;
@@ -736,33 +743,13 @@ async function checkOrbinuityDirectApi() {
         } else {
             STATE.orbinuityUser = null;
             STATE.orbinuityToken = null;
+            pendingUserId = null;
             localStorage.removeItem('orbinuity_token');
             localStorage.removeItem('orbinuity_user_cache');
         }
     } catch (e) {
         console.warn(e);
     }
-}
-
-async function directOrbinuityLogin(username, password) {
-    const res = await fetch(`${API_ORBINUITY_BASE}/auth/login`, {
-        method: 'POST',
-        headers: {
-            'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({ username, password })
-    });
-
-    const data = await res.json();
-    if (!res.ok) {
-        throw new Error(data.error || 'Login failed');
-    }
-
-    STATE.orbinuityToken = data.token;
-    localStorage.setItem('orbinuity_token', data.token);
-
-    await checkOrbinuityDirectApi();
-    applyLanguage();
 }
 
 async function syncToOrbinuityCloud() {
@@ -898,6 +885,7 @@ function renderOrbinuitySettings() {
         document.getElementById('disconnectOrbinuityBtn').addEventListener('click', () => {
             STATE.orbinuityUser = null;
             STATE.orbinuityToken = null;
+            pendingUserId = null;
             localStorage.removeItem('orbinuity_token');
             localStorage.removeItem('orbinuity_user_cache');
             renderOrbinuitySettings();
@@ -918,18 +906,31 @@ function renderOrbinuitySettings() {
             btn.disabled = false;
         });
     } else {
+        const is2FA = !!pendingUserId;
         container.innerHTML = `
             <div class="orbinuity-card">
                 <p id="orbinuityStatusMsg" style="font-size:0.8rem; color:var(--text-muted);">${t.orbinuityNotConnected}</p>
-                <div class="form-group" style="margin-bottom:0.4rem;">
-                    <label for="orbDirectUser" data-i18n="orbUsernameLabel">${t.orbUsernameLabel}</label>
-                    <input type="text" id="orbDirectUser" placeholder="${t.orbUsernamePlaceholder}" style="font-size:0.82rem; padding:0.45rem 0.6rem;">
+                
+                <div id="orbCredentialsStep" class="${is2FA ? 'hidden' : ''}">
+                    <div class="form-group" style="margin-bottom:0.4rem;">
+                        <label for="orbDirectUser" data-i18n="orbUsernameLabel">${t.orbUsernameLabel}</label>
+                        <input type="text" id="orbDirectUser" placeholder="${t.orbUsernamePlaceholder}" style="font-size:0.82rem; padding:0.45rem 0.6rem;" autocomplete="username">
+                    </div>
+                    <div class="form-group" style="margin-bottom:0.5rem;">
+                        <label for="orbDirectPass" data-i18n="orbPasswordLabel">${t.orbPasswordLabel}</label>
+                        <input type="password" id="orbDirectPass" placeholder="${t.orbPasswordPlaceholder}" style="font-size:0.82rem; padding:0.45rem 0.6rem;" autocomplete="current-password">
+                    </div>
                 </div>
-                <div class="form-group" style="margin-bottom:0.5rem;">
-                    <label for="orbDirectPass" data-i18n="orbPasswordLabel">${t.orbPasswordLabel}</label>
-                    <input type="password" id="orbDirectPass" placeholder="${t.orbPasswordPlaceholder}" style="font-size:0.82rem; padding:0.45rem 0.6rem;">
+
+                <div id="orb2faStep" class="${is2FA ? '' : 'hidden'}">
+                    <div class="form-group" style="margin-bottom:0.5rem;">
+                        <label for="orb2faCode" data-i18n="orb2faLabel">${t.orb2faLabel}</label>
+                        <input type="text" id="orb2faCode" maxlength="6" placeholder="${t.orb2faPlaceholder}" style="font-size:0.82rem; padding:0.45rem 0.6rem;" autocomplete="one-time-code">
+                    </div>
                 </div>
-                <button id="orbDirectLoginBtn" class="btn-primary" style="font-size:0.85rem; padding:0.5rem;">${t.signIn}</button>
+
+                <button id="orbDirectLoginBtn" class="btn-primary" style="font-size:0.85rem; padding:0.5rem;">${is2FA ? t.orbVerifyBtn : t.signIn}</button>
+                
                 <p class="orbinuity-signup-prompt">
                     <span data-i18n="orbinuityNoAccountPrompt">${t.orbinuityNoAccountPrompt}</span>
                     <a href="https://orbinuity.nl/account/signup" target="_blank" rel="noopener" data-i18n="orbinuitySignupLinkText">${t.orbinuitySignupLinkText}</a>
@@ -940,25 +941,83 @@ function renderOrbinuitySettings() {
         document.getElementById('orbDirectLoginBtn').addEventListener('click', async () => {
             const btn = document.getElementById('orbDirectLoginBtn');
             const statusMsg = document.getElementById('orbinuityStatusMsg');
-            const u = document.getElementById('orbDirectUser').value.trim();
-            const p = document.getElementById('orbDirectPass').value;
-
-            if (!u || !p) return;
-
             btn.disabled = true;
-            btn.textContent = t.authenticating;
 
-            try {
-                await directOrbinuityLogin(u, p);
-                renderOrbinuitySettings();
-            } catch (err) {
-                if (statusMsg) {
-                    statusMsg.textContent = err.message;
-                    statusMsg.style.color = 'var(--danger)';
+            if (pendingUserId) {
+                const code = document.getElementById('orb2faCode').value.trim();
+                if (!code) {
+                    btn.disabled = false;
+                    return;
                 }
-            } finally {
-                btn.disabled = false;
-                btn.textContent = t.signIn;
+
+                btn.textContent = t.authenticating;
+
+                try {
+                    const res = await fetch(`${API_ORBINUITY_BASE}/auth/login/2fa`, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ userId: pendingUserId, code })
+                    });
+
+                    const data = await res.json();
+                    if (!res.ok) throw new Error(data.error || '2FA Verification failed.');
+
+                    STATE.orbinuityToken = data.token;
+                    localStorage.setItem('orbinuity_token', data.token);
+                    pendingUserId = null;
+
+                    await checkOrbinuityDirectApi();
+                    renderOrbinuitySettings();
+                    applyLanguage();
+                } catch (err) {
+                    if (statusMsg) {
+                        statusMsg.textContent = err.message;
+                        statusMsg.style.color = 'var(--danger)';
+                    }
+                } finally {
+                    btn.disabled = false;
+                }
+            } else {
+                const identifier = document.getElementById('orbDirectUser').value.trim();
+                const password = document.getElementById('orbDirectPass').value;
+
+                if (!identifier || !password) {
+                    btn.disabled = false;
+                    return;
+                }
+
+                btn.textContent = t.authenticating;
+
+                try {
+                    const res = await fetch(`${API_ORBINUITY_BASE}/auth/login`, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ identifier, password })
+                    });
+
+                    const data = await res.json();
+                    if (!res.ok) throw new Error(data.error || 'Login failed.');
+
+                    if (data.requiresTwoFactor) {
+                        pendingUserId = data.userId;
+                        renderOrbinuitySettings();
+                        return;
+                    }
+
+                    STATE.orbinuityToken = data.token;
+                    localStorage.setItem('orbinuity_token', data.token);
+
+                    await checkOrbinuityDirectApi();
+                    renderOrbinuitySettings();
+                    applyLanguage();
+                } catch (err) {
+                    if (statusMsg) {
+                        statusMsg.textContent = err.message;
+                        statusMsg.style.color = 'var(--danger)';
+                    }
+                } finally {
+                    btn.disabled = false;
+                }
             }
         });
     }
